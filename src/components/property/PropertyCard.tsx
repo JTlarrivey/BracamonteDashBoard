@@ -1,6 +1,6 @@
 import React from "react";
 import {
-  Edit,
+  CreditCard as Edit,
   Trash2,
   Heart,
   Home,
@@ -71,7 +71,11 @@ const PropertyCard: React.FC<PropertyCardProps> = ({
         <div className="h-48 overflow-hidden relative">
           {property.images && property.images.length > 0 ? (
             <img
-              src={property.images[0]}
+              src={
+                property.images[0].startsWith("property_image_")
+                  ? localStorage.getItem(property.images[0]) || ""
+                  : property.images[0]
+              }
               alt={property.title}
               className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
             />
@@ -88,7 +92,7 @@ const PropertyCard: React.FC<PropertyCardProps> = ({
         </div>
       </div>
 
-      <CardContent className="p-4">
+      <CardContent>
         <div className="cursor-pointer" onClick={handleCardClick}>
           <h3 className="text-lg font-semibold mb-2 line-clamp-1">
             {property.title}

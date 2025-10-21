@@ -31,7 +31,11 @@ export const ImageCarousel: React.FC<ImageCarouselProps> = ({ images }) => {
   return (
     <div className="relative w-full h-full">
       <img
-        src={images[currentIndex]}
+        src={
+          images[currentIndex].startsWith("property_image_")
+            ? localStorage.getItem(images[currentIndex]) || ""
+            : images[currentIndex]
+        }
         alt={`Property image ${currentIndex + 1}`}
         className="w-full h-full object-cover"
       />

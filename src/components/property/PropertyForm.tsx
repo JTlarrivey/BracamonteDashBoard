@@ -8,6 +8,8 @@ import {
   Square as SquareFeet,
   PlusCircle,
   Trash2,
+  Upload,
+  Image as ImageIcon,
 } from "lucide-react";
 import Button from "../ui/Button";
 import { PropertyFormData, PropertyStatus } from "../../types/property";
@@ -43,7 +45,7 @@ const PropertyForm: React.FC<PropertyFormProps> = ({
     initialData || defaultFormData
   );
   const [newAmenity, setNewAmenity] = useState<string>("");
-  const [imageUrl, setImageUrl] = useState<string>("");
+  const [uploading, setUploading] = useState<boolean>(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const handleChange = (
@@ -93,17 +95,75 @@ const PropertyForm: React.FC<PropertyFormProps> = ({
     });
   };
 
-  const handleAddImage = () => {
-    if (imageUrl.trim() !== "" && !formData.images.includes(imageUrl.trim())) {
+  const handleFileUpload = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+
+    setUploading(true);
+
+    try {
+      const uploadPromises = Array.from(files).map(async (file) => {
+        // Validate file type
+        if (!file.type.startsWith("image/")) {
+          throw new Error(`${file.name} no es una imagen válida`);
+        }
+
+        // Validate file size (max 5MB)
+        if (file.size > 5 * 1024 * 1024) {
+          throw new Error(`${file.name} es demasiado grande (máximo 5MB)`);
+        }
+
+        // Create a unique filename
+        const timestamp = Date.now();
+        const randomString = Math.random().toString(36).substring(2, 15);
+        const extension = file.name.split(".").pop();
+        const fileName = `property_${timestamp}_${randomString}.${extension}`;
+
+        // Convert file to base64 for local storage
+        return new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            const base64String = reader.result as string;
+            // Store in localStorage with filename as key
+            try {
+              localStorage.setItem(`property_image_${fileName}`, base64String);
+              resolve(`property_image_${fileName}`);
+            } catch (error) {
+              reject(new Error("Error al guardar la imagen localmente"));
+            }
+          };
+          reader.onerror = () => reject(new Error("Error al leer el archivo"));
+          reader.readAsDataURL(file);
+        });
+      });
+
+      const uploadedImageKeys = await Promise.all(uploadPromises);
+
       setFormData({
         ...formData,
-        images: [...formData.images, imageUrl.trim()],
+        images: [...formData.images, ...uploadedImageKeys],
       });
-      setImageUrl("");
+
+      // Reset file input
+      event.target.value = "";
+    } catch (error) {
+      console.error("Error uploading images:", error);
+      alert(
+        error instanceof Error ? error.message : "Error al subir las imágenes"
+      );
+    } finally {
+      setUploading(false);
     }
   };
 
   const handleRemoveImage = (image: string) => {
+    // Remove from localStorage if it's a local image
+    if (image.startsWith("property_image_")) {
+      localStorage.removeItem(image);
+    }
+
     setFormData({
       ...formData,
       images: formData.images.filter((img) => img !== image),
@@ -396,21 +456,47 @@ const PropertyForm: React.FC<PropertyFormProps> = ({
       <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
         <h3 className="text-lg font-medium mb-4 text-gray-800">Fotos</h3>
 
-        <div className="flex mb-4">
-          <input
-            type="text"
-            value={imageUrl}
-            onChange={(e) => setImageUrl(e.target.value)}
-            placeholder="Ingrese URL de la imagen"
-            className="flex-grow p-2 border border-gray-300 rounded-l-md focus:ring-blue-500 focus:border-blue-500"
-          />
+        <div className="mb-4">
+          <label className="block">
+            <input
+              type="file"
+              multiple
+              accept="image/*"
+              onChange={handleFileUpload}
+              className="hidden"
+              disabled={uploading}
+            />
+            <div className="flex items-center justify-center w-full p-4 border-2 border-dashed border-gray-600 rounded-lg cursor-pointer hover:border-gray-500 transition-colors bg-gray-800">
+              {uploading ? (
+                <div className="flex items-center text-gray-300">
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500 mr-2"></div>
+                  Subiendo imágenes...
+                </div>
+              ) : (
+                <div className="flex items-center text-gray-300">
+                  <Upload className="w-5 h-5 mr-2" />
+                  Seleccionar imágenes (máximo 5MB cada una)
+                </div>
+              )}
+            </div>
+          </label>
+        </div>
+
+        <div className="mb-4">
           <Button
             type="button"
-            onClick={handleAddImage}
-            variant="primary"
-            className="rounded-l-none"
+            onClick={() =>
+              (
+                document.querySelector(
+                  'input[type="file"]'
+                ) as HTMLInputElement | null
+              )?.click()
+            }
+            variant="outline"
+            disabled={uploading}
+            leftIcon={<ImageIcon className="w-4 h-4" />}
           >
-            <PlusCircle className="w-5 h-5" />
+            {uploading ? "Subiendo..." : "Agregar Fotos"}
           </Button>
         </div>
 
@@ -418,7 +504,11 @@ const PropertyForm: React.FC<PropertyFormProps> = ({
           {formData.images.map((image, index) => (
             <div key={index} className="relative group">
               <img
-                src={image}
+                src={
+                  image.startsWith("property_image_")
+                    ? localStorage.getItem(image) || ""
+                    : image
+                }
                 alt={`Property ${index + 1}`}
                 className="w-full h-28 object-cover rounded-md"
                 onError={(e) => {
@@ -438,7 +528,7 @@ const PropertyForm: React.FC<PropertyFormProps> = ({
           ))}
           {formData.images.length === 0 && (
             <div className="col-span-full">
-              <p className="text-gray-500 text-sm">Sin fotos todavía</p>
+              <p className="text-gray-400 text-sm">Sin fotos todavía</p>
             </div>
           )}
         </div>
