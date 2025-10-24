@@ -2,7 +2,6 @@ import React from "react";
 import {
   CreditCard as Edit,
   Trash2,
-  Heart,
   Home,
   MapPin,
   BedDouble,
@@ -34,13 +33,6 @@ const PropertyCard: React.FC<PropertyCardProps> = ({
     alquilado: "bg-purple-100 text-purple-800",
   };
 
-  const statusTranslations = {
-    disponible: "Disponible",
-    pendiente: "Pendiente",
-    vendido: "Vendido",
-    alquilado: "Alquilado",
-  };
-
   const formatLocation = () => {
     const parts = [];
     if (property.location) parts.push(property.location);
@@ -65,17 +57,14 @@ const PropertyCard: React.FC<PropertyCardProps> = ({
               statusColors[property.status]
             }`}
           >
-            {statusTranslations[property.status]}
+            {property.status}
           </span>
         </div>
+
         <div className="h-48 overflow-hidden relative">
-          {property.images && property.images.length > 0 ? (
+          {property.images?.length ? (
             <img
-              src={
-                property.images[0].startsWith("property_image_")
-                  ? localStorage.getItem(property.images[0]) || ""
-                  : property.images[0]
-              }
+              src={property.images[0]}
               alt={property.title}
               className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
             />
@@ -84,43 +73,32 @@ const PropertyCard: React.FC<PropertyCardProps> = ({
               <Home className="w-12 h-12 text-gray-400" />
             </div>
           )}
-          <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/70 to-transparent text-white">
-            <p className="text-xl font-bold">
-              ${Number(property.price).toLocaleString()}
-            </p>
-          </div>
         </div>
       </div>
 
       <CardContent>
-        <div className="cursor-pointer" onClick={handleCardClick}>
-          <h3 className="text-lg font-semibold mb-2 line-clamp-1">
-            {property.title}
-          </h3>
+        <h3 className="text-lg font-semibold mb-2 line-clamp-1">
+          {property.title}
+        </h3>
 
-          <div className="flex items-center text-gray-600 text-sm mb-2">
-            <MapPin className="w-4 h-4 mr-1" />
-            <span className="line-clamp-1">{formatLocation()}</span>
+        <div className="flex items-center text-gray-600 text-sm mb-2">
+          <MapPin className="w-4 h-4 mr-1" />
+          <span className="line-clamp-1">{formatLocation()}</span>
+        </div>
+
+        <div className="flex justify-between mt-3 text-sm">
+          <div className="flex items-center text-gray-700">
+            <BedDouble className="w-4 h-4 mr-1" />
+            <span>{property.bedrooms}</span>
           </div>
-
-          <div className="flex justify-between mt-3 text-sm">
-            <div className="flex items-center text-gray-700">
-              <BedDouble className="w-4 h-4 mr-1" />
-              <span>{property.bedrooms} </span>
-            </div>
-            <div className="flex items-center text-gray-700">
-              <Bath className="w-4 h-4 mr-1" />
-              <span>{property.bathrooms} </span>
-            </div>
-            <div className="flex items-center text-gray-700">
-              <SquareFeet className="w-4 h-4 mr-1" />
-              <span>{property.square_meters} m²</span>
-            </div>
+          <div className="flex items-center text-gray-700">
+            <Bath className="w-4 h-4 mr-1" />
+            <span>{property.bathrooms}</span>
           </div>
-
-          <p className="text-gray-600 mt-2 text-sm line-clamp-2">
-            {property.description}
-          </p>
+          <div className="flex items-center text-gray-700">
+            <SquareFeet className="w-4 h-4 mr-1" />
+            <span>{property.square_meters} m²</span>
+          </div>
         </div>
       </CardContent>
 
@@ -133,7 +111,7 @@ const PropertyCard: React.FC<PropertyCardProps> = ({
             e.stopPropagation();
             navigate(`/edit-property/${property.id}`);
           }}
-        ></Button>
+        />
         <Button
           variant="ghost"
           size="sm"
@@ -143,7 +121,7 @@ const PropertyCard: React.FC<PropertyCardProps> = ({
             onDelete(property.id);
           }}
           className="text-red-500 hover:bg-red-50"
-        ></Button>
+        />
       </CardFooter>
     </Card>
   );

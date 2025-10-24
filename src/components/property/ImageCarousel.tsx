@@ -20,7 +20,7 @@ export const ImageCarousel: React.FC<ImageCarouselProps> = ({ images }) => {
     );
   };
 
-  if (images.length === 0) {
+  if (!images || images.length === 0) {
     return (
       <div className="w-full h-full bg-gray-200 flex items-center justify-center">
         <Home className="w-12 h-12 text-gray-400" />
@@ -31,13 +31,14 @@ export const ImageCarousel: React.FC<ImageCarouselProps> = ({ images }) => {
   return (
     <div className="relative w-full h-full">
       <img
-        src={
-          images[currentIndex].startsWith("property_image_")
-            ? localStorage.getItem(images[currentIndex]) || ""
-            : images[currentIndex]
-        }
+        src={images[currentIndex]}
         alt={`Property image ${currentIndex + 1}`}
-        className="w-full h-full object-cover"
+        className="w-full h-full object-cover rounded-md"
+        onError={(e) => {
+          const target = e.target as HTMLImageElement;
+          target.src =
+            "https://via.placeholder.com/800x600?text=Imagen+no+disponible";
+        }}
       />
 
       {images.length > 1 && (

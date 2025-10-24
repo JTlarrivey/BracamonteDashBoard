@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import Button from "../ui/Button";
 import { PropertyFormData, PropertyStatus } from "../../types/property";
+import { supabase } from "../../lib/supabase";
 
 interface PropertyFormProps {
   initialData?: PropertyFormData;
@@ -95,6 +96,7 @@ const PropertyForm: React.FC<PropertyFormProps> = ({
     });
   };
 
+  // 🚀 Nuevo: subir imágenes a Supabase Storage
   const handleFileUpload = async (
     event: React.ChangeEvent<HTMLInputElement>
   ) => {
@@ -105,48 +107,43 @@ const PropertyForm: React.FC<PropertyFormProps> = ({
 
     try {
       const uploadPromises = Array.from(files).map(async (file) => {
-        // Validate file type
+        // Validar tipo y tamaño
         if (!file.type.startsWith("image/")) {
           throw new Error(`${file.name} no es una imagen válida`);
         }
 
-        // Validate file size (max 5MB)
         if (file.size > 5 * 1024 * 1024) {
           throw new Error(`${file.name} es demasiado grande (máximo 5MB)`);
         }
 
-        // Create a unique filename
+        // Crear nombre único
         const timestamp = Date.now();
         const randomString = Math.random().toString(36).substring(2, 15);
         const extension = file.name.split(".").pop();
         const fileName = `property_${timestamp}_${randomString}.${extension}`;
 
-        // Convert file to base64 for local storage
-        return new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => {
-            const base64String = reader.result as string;
-            // Store in localStorage with filename as key
-            try {
-              localStorage.setItem(`property_image_${fileName}`, base64String);
-              resolve(`property_image_${fileName}`);
-            } catch (error) {
-              reject(new Error("Error al guardar la imagen localmente"));
-            }
-          };
-          reader.onerror = () => reject(new Error("Error al leer el archivo"));
-          reader.readAsDataURL(file);
-        });
+        // Subir al bucket "properties"
+        const { error: uploadError } = await supabase.storage
+          .from("properties")
+          .upload(fileName, file);
+
+        if (uploadError) throw uploadError;
+
+        // Obtener URL pública
+        const { data: publicData } = supabase.storage
+          .from("properties")
+          .getPublicUrl(fileName);
+
+        return publicData.publicUrl;
       });
 
-      const uploadedImageKeys = await Promise.all(uploadPromises);
+      const uploadedUrls = await Promise.all(uploadPromises);
 
       setFormData({
         ...formData,
-        images: [...formData.images, ...uploadedImageKeys],
+        images: [...formData.images, ...uploadedUrls],
       });
 
-      // Reset file input
       event.target.value = "";
     } catch (error) {
       console.error("Error uploading images:", error);
@@ -158,15 +155,20 @@ const PropertyForm: React.FC<PropertyFormProps> = ({
     }
   };
 
-  const handleRemoveImage = (image: string) => {
-    // Remove from localStorage if it's a local image
-    if (image.startsWith("property_image_")) {
-      localStorage.removeItem(image);
+  // 🚀 Nuevo: eliminar imagen del bucket
+  const handleRemoveImage = async (imageUrl: string) => {
+    try {
+      const filePath = imageUrl.split("/properties/")[1];
+      if (filePath) {
+        await supabase.storage.from("properties").remove([filePath]);
+      }
+    } catch (error) {
+      console.warn("Error al eliminar imagen del bucket:", error);
     }
 
     setFormData({
       ...formData,
-      images: formData.images.filter((img) => img !== image),
+      images: formData.images.filter((img) => img !== imageUrl),
     });
   };
 
